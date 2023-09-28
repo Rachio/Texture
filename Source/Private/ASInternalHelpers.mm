@@ -61,7 +61,19 @@ void _ASInitializeSignpostObservers(void)
 }
 #endif  // AS_SIGNPOST_ENABLE
 
-void ASInitializeFrameworkMainThread(void)
+void ASInitializeFrameworkMainThreadOnConstructor(void)
+{
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    ASDisplayNodeCAssertMainThread();
+    ASNotifyInitialized();
+#if AS_SIGNPOST_ENABLE
+    _ASInitializeSignpostObservers();
+#endif
+  });
+}
+
+void ASInitializeFrameworkMainThreadOnDestructor(void)
 {
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
@@ -73,11 +85,13 @@ void ASInitializeFrameworkMainThread(void)
       allowsGroupOpacityFromUIKitOrNil = @(YES);
       allowsEdgeAntialiasingFromUIKitOrNil = @(NO);
     }
-    ASNotifyInitialized();
-#if AS_SIGNPOST_ENABLE
-    _ASInitializeSignpostObservers();
-#endif
   });
+}
+
+ASDK_EXTERN void ASInitializeFrameworkMainThread(void)
+{
+  ASInitializeFrameworkMainThreadOnConstructor();
+  ASInitializeFrameworkMainThreadOnDestructor();
 }
 
 BOOL ASSubclassOverridesSelector(Class superclass, Class subclass, SEL selector)
